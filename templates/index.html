@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <style>
+        .positive:before { content: "+"; color: green; }
+        .positive { color: green; }
+        .negative { color: red; }
+        th, td { padding: 1em; }
+        body { margin: 2em auto; max-width: 80em; }
+    </style>
+    <body>
+        <form action="/buy" method="post">
+            <input type="text" placeholder="ticker" name="ticker"/>
+            <input type="text" placeholder="# shares" name="shares"/>
+            <input type="text" placeholder="price" name="price"/>
+            <input type="submit" value="Buy"/>
+        </form>
+
+        <table id="portfolio">
+            <tr>
+                <th>Ticker</th>
+                <th>Number of shares</th>
+                <th>Total cost</th>
+                <th>Current value</th>
+                <th>Percent change</th>
+            </tr>
+            <tr>
+                <td>Loading...</td>
+            <tr>
+        </table>
+        <a href="/flush">Flush DB</a>
+        <script>
+          function percentChangeCalc(cost, value){
+            return (cost != 0 ? (value - cost) * 100 / cost : 0);
+          }
+
+          function percentChangeRow(percent) {
+            if (percent > 0) {
+              return "<td class='positive'>" + percent.toFixed(2) + "%</td>";
+            }
+            else if (percent < 0){
+              return "<td class='negative'>" + percent.toFixed(2) + "%</td>";
+            }
+            else {
+              return "<td>" + percent.toFixed(2) + "%</td>";
+            }
+          }
+          // query the /portfolio endpoint
+          function getPortfolio() {
+              fetch("/portfolio")
+                  .then(response => response.json())
+                  .then(data => {
+                    // console.log(data);
+                    var table = document.getElementById("portfolio");
+                    var tableHTML = `<tr>
+                                    <th>Ticker</th>
+                                    <th>Number of shares</th>
+                                    <th>Total cost</th>
+                                    <th>Current value</th>
+                                    <th>Percent change</th>
+                                </tr>`;
+                    var portfolioCost = 0;
+                    var portfolioCurrent = 0;
+
+                    for (var ticker in data){
+                      var totalShare = data[ticker]['total_share'];
+                      var totalCost = data[ticker]['total_cost'];
+                      var currentValue = data[ticker]['current_value'];
+                      var percentChange = percentChangeCalc(totalCost, currentValue);
+
+                      row = "<tr>";
+                      row += "<td>$" + ticker +"</td>";
+                      row += "<td>" + totalShare +"</td>";
+                      row += "<td>$" + totalCost.toFixed(2) +"</td>";
+                      row += "<td>$" + currentValue.toFixed(2) +"</td>";
+                      row += percentChangeRow(percentChange);
+                      row += "</tr>";
+                      tableHTML += row;
+
+                      portfolioCost += totalCost;
+                      portfolioCurrent += currentValue;
+                    }
+
+                    portfolioPercentChange = percentChangeCalc(portfolioCost, portfolioCurrent);
+
+                    tableHTML += "<tr>";
+                    tableHTML += "<th>Total</th>";
+                    tableHTML += "<th>&nbsp;</th>";
+                    tableHTML += "<th>$"+ portfolioCost.toFixed(2) +"</th>";
+                    tableHTML += "<th>$"+ portfolioCurrent.toFixed(2) +"</th>";
+                    tableHTML += percentChangeRow(portfolioPercentChange);
+                    tableHTML += "</tr>";
+
+                    table.innerHTML = tableHTML;
+                  });
+              
+          }
+          getPortfolio();
+          setInterval(function(){
+            getPortfolio();
+          }, 6000);
+          </script>
+    </body>
+</html>
